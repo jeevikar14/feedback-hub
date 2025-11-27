@@ -6,7 +6,7 @@
 
 ## How can I edit this code?
 
-Dummy thing
+Person 2 changed ok
 
 **Use Lovable**
 
