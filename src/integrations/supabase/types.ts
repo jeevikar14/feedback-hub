@@ -14,65 +14,7 @@ export type Database = {
   }
   public: {
     Tables: {
-      feedback: {
-        Row: {
-          category: string
-          created_at: string
-          id: string
-          message: string | null
-          rating: number
-          user_id: string
-        }
-        Insert: {
-          category: string
-          created_at?: string
-          id?: string
-          message?: string | null
-          rating: number
-          user_id: string
-        }
-        Update: {
-          category?: string
-          created_at?: string
-          id?: string
-          message?: string | null
-          rating?: number
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "feedback_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      users: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id?: string
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: string
-          name?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Views: {
       [_ in never]: never
