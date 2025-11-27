@@ -6,7 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Star } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { ref, push } from "firebase/database";
+import { db } from "@/firebase";
+
 import { toast } from "sonner";
 
 interface FeedbackFormData {
@@ -28,78 +30,57 @@ export const FeedbackForm = ({ onSuccess }: { onSuccess: () => void }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    // Validation
-    if (!formData.name.trim()) {
-      toast.error("Please enter your name");
-      return;
-    }
-    if (!formData.email.trim() || !formData.email.includes("@")) {
-      toast.error("Please enter a valid email address");
-      return;
-    }
-    if (formData.rating === 0) {
-      toast.error("Please select a rating");
-      return;
-    }
-    if (!formData.category) {
-      toast.error("Please select a category");
-      return;
-    }
+  if (!formData.name.trim()) {
+    toast.error("Please enter your name");
+    return;
+  }
+  if (!formData.email.trim() || !formData.email.includes("@")) {
+    toast.error("Please enter a valid email address");
+    return;
+  }
+  if (formData.rating === 0) {
+    toast.error("Please select a rating");
+    return;
+  }
+  if (!formData.category) {
+    toast.error("Please select a category");
+    return;
+  }
 
-    setIsSubmitting(true);
+  setIsSubmitting(true);
 
-    try {
-      // Step 1: Upsert user
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .upsert(
-          {
-            name: formData.name.trim(),
-            email: formData.email.trim().toLowerCase(),
-          },
-          {
-            onConflict: "email",
-            ignoreDuplicates: false,
-          }
-        )
-        .select()
-        .single();
+  try {
+    const feedbackData = {
+      name: formData.name.trim(),
+      email: formData.email.trim().toLowerCase(),
+      rating: formData.rating,
+      category: formData.category,
+      message: formData.message.trim() || null,
+      createdAt: new Date().toISOString()
+    };
 
-      if (userError) throw userError;
+    await push(ref(db, "feedbacks"), feedbackData);
 
-      // Step 2: Insert feedback
-      const { error: feedbackError } = await supabase.from("feedback").insert({
-        user_id: userData.id,
-        rating: formData.rating,
-        category: formData.category,
-        message: formData.message.trim() || null,
-      });
+    toast.success("✅ Feedback submitted successfully!");
+    setFormData({
+      name: "",
+      email: "",
+      rating: 0,
+      category: "",
+      message: "",
+    });
 
-      if (feedbackError) throw feedbackError;
+    onSuccess();
+  } catch (error) {
+    console.error("Firebase Error:", error);
+    toast.error("❌ Failed to submit feedback");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
-      // Success!
-      toast.success("Thank you for your feedback!");
-      
-      // Reset form
-      setFormData({
-        name: "",
-        email: "",
-        rating: 0,
-        category: "",
-        message: "",
-      });
-
-      // Notify parent to refresh latest feedback
-      onSuccess();
-    } catch (error) {
-      console.error("Error submitting feedback:", error);
-      toast.error("Failed to submit feedback. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   return (
     <Card className="w-full max-w-2xl mx-auto shadow-lg">
