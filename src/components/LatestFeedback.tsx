@@ -2,59 +2,49 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Star } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { onValue, ref } from "firebase/database";
+import { db } from "@/firebase";
 
-interface FeedbackWithUser {
-  id: string;
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Star } from "lucide-react";
+import { onValue, ref } from "firebase/database";
+import { db } from "@/firebase";
+
+interface Feedback {
+  name: string;
+  email: string;
   rating: number;
   category: string;
   message: string | null;
-  created_at: string;
-  users: {
-    name: string;
-    email: string;
-  };
+  createdAt: string;
 }
 
 export const LatestFeedback = ({ refresh }: { refresh: number }) => {
-  const [feedback, setFeedback] = useState<FeedbackWithUser | null>(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchLatestFeedback = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from("feedback")
-          .select(`
-            id,
-            rating,
-            category,
-            message,
-            created_at,
-            users (
-              name,
-              email
-            )
-          `)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
+    const feedbackRef = ref(db, "feedbacks");
 
-        if (error && error.code !== "PGRST116") {
-          console.error("Error fetching feedback:", error);
-          return;
-        }
+    onValue(feedbackRef, (snapshot) => {
+      setLoading(false);
+      const data = snapshot.val();
 
-        setFeedback(data);
-      } catch (error) {
-        console.error("Error:", error);
-      } finally {
-        setLoading(false);
+      if (!data) {
+        setFeedback(null);
+        return;
       }
-    };
 
-    fetchLatestFeedback();
+      // Convert object to array and get latest
+      const feedbackArray: Feedback[] = Object.values(data);
+      const latest = feedbackArray.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )[0];
+
+      setFeedback(latest);
+    });
   }, [refresh]);
 
   if (loading) {
@@ -85,8 +75,8 @@ export const LatestFeedback = ({ refresh }: { refresh: number }) => {
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="font-semibold text-lg">{feedback.users.name}</p>
-            <p className="text-sm text-muted-foreground">{feedback.users.email}</p>
+            <p className="font-semibold text-lg">{feedback.name}</p>
+            <p className="text-sm text-muted-foreground">{feedback.email}</p>
           </div>
           <Badge variant="secondary" className="text-sm">
             {feedback.category}
@@ -113,9 +103,10 @@ export const LatestFeedback = ({ refresh }: { refresh: number }) => {
         )}
 
         <p className="text-xs text-muted-foreground">
-          Submitted {new Date(feedback.created_at).toLocaleString()}
+          Submitted {new Date(feedback.createdAt).toLocaleString()}
         </p>
       </CardContent>
     </Card>
   );
 };
+
